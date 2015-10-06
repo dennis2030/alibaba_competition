@@ -24,11 +24,14 @@ def worker(i):
     global db_prefix
     global f_list
     datum = caffe_pb2.Datum.FromString(db.Get(str(i).zfill(10)))
+
     arr = caffe.io.datum_to_array(datum)
     arr = np.squeeze(arr, 2)
     arr = np.transpose(arr)
     prefix = ntpath.basename(f_list[i]).split('.')[0]
     np.save(saveDir + prefix  +'.npy', arr)
+    if((i+1) % 10000 == 0):
+        print str(i+1) + ' npy had been saved'
     return arr
         
 def readLevelDB(dbName):
@@ -39,7 +42,7 @@ def readLevelDB(dbName):
     jobs = []
 
     for i in xrange(0, count):
-        if(i % 1000 == 0):
+        if(i % 10000 == 0):
             print str(i) + ' files add to queue.'
 
         job = pool.apply_async(worker, (i, ))
