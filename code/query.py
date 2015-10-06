@@ -2,12 +2,17 @@
 import sys
 import glob
 import os
+import ntpath
 
 import numpy as np
+import cPickle
+from scipy.sparse import csr_matrix, vstack, hstack
 from sklearn.neighbors import NearestNeighbors
+
+
 def __usage__():
-    print "Usage: ./query.py query_feature_path eval_npys_dir top_k"
-    print "for example, ./query.py xxxx.npy /tmp3/bean/Alibaba/feature_npy/ 20"
+    print "Usage: ./query.py query_feature_path eval_npys_dir cPicle_path top_k"
+    print "for example, ./query.py xxxx.npy /tmp3/bean/Alibaba/feature_npy/ /tmp3/bean/alibaba/npys/xxx.cPickle 20"
     print "if the given \"query_feature_path\" is a folder, it will use all the .npy in folder to query"
     return
 
@@ -21,56 +26,49 @@ def readAllFilesWithExtInDir(dir_path, ext):
     
     return file_list
 
-def concatNpysIntoOneBigMatrix(npy_list):
-
-    print "Start reading eval images..."
-
-    result = np.array([])
-    count = 0
-    for npy in npy_list:
-        if( (count+1) % 500 == 0):
-            sys.stderr.write(str(count+1) + " eval images loaded\n")
-        f = np.load(npy)
-        result = np.append(result, f)
-        count += 1
-
-    return result
-
 def __main__():
 
-    if( len(sys.argv) < 4):
+    if( len(sys.argv) < 5):
         __usage__()
         return
 
     # parse arguments
     query_image = sys.argv[1]
     eval_npys_dir = sys.argv[2]
-    top_k = sys.argv[3]
+    eval_cPickle = sys.argv[3]
+    top_k = int(sys.argv[4])
 
     eval_list = readAllFilesWithExtInDir(eval_npys_dir, 'npy')
-    eval_features = concatNpysIntoOneBigMatrix(eval_list)
-
     query_list = query_image
+    
     if(os.path.isdir(query_image)):
         query_list = readAllFilesWithExtInDir(query_image, 'npy')
     
-    sys.stderr.write("Constructing KNN tree...\n")
-    # knn infrastructure initialization
-    nbrs = NearestNeighbors(n_neighbors=20, algorithm='auto', metric='euclidean').fix(eval_features)
+    sys.stderr.write("Loading " + eval_cPickle + " ...\n")
+   
+    # load KNN tree object back from cPickle file (ball tree or kd tree)
+    nbrs = cPickle.load(open(eval_cPickle,'r'))
+    sys.stderr.write("Loading is finished\n")
 
-    sys.stderr.write("KNN tree construction finished.\n")
-    
     count = 0
     for query in query_list:
-        if( (count+1) % 50 == 0):
-            sys.stderr.write(str(count) + ' queries have been processed\n')
+        if( (count+1) % 10 == 0):
+            sys.stderr.write(str(count+1) + ' queries have been processed\n')
+
+        # load query feature ( the shape should be (1, num_dimension) )
         query_npy = np.load(query)
-        distances, indices = nbrs.kneighbors(query_npy)
-        result = query + ","
-        for indice in indices:
-            result += eval_list[indice] + ";"
+        
+        # find knn
+        distances, indices = nbrs.kneighbors(query_npy, top_k)
+        
+        result = ntpath.basename(query) + ","
+        # map indice back to the image name
+        for indice in indices[0]:
+            result += ntpath.basename(eval_list[indice]) + ";"
         print result
         count += 1
+
+    sys.stderr.write'All ' + str(len(query_list)) + ' queries have been processed\n')
 
 if __name__ == '__main__':
     __main__()
