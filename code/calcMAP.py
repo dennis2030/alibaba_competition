@@ -31,7 +31,12 @@ def calcAP(query, answer):
             hit += 1
             P = float(hit)/count
             P_sum += P
-    return P_sum/20.0
+    num_ground_truth = len(answer)
+    if(num_ground_truth > 20):
+        num_ground_truth = 20
+
+    # Notice: This is AP
+    return P_sum/num_ground_truth
 
 def __main__():
     
@@ -45,13 +50,15 @@ def __main__():
     query_dict = parseTopK(query)
     answer_dict = parseTopK(answer)
 
+    query_num = len(answer_dict)
     ap_sum = 0
+
     for key,value in query_dict.iteritems():
         answer_list = answer_dict[key]
         ap = calcAP(value, answer_list)
         ap_sum += ap
 
-    print 'MAP is ' + str(ap_sum/500.0)
+    print 'MAP is ' + str(ap_sum/len(answer_dict))
 
 
 

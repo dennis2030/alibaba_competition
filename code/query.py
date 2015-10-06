@@ -61,10 +61,10 @@ def __main__():
         # find knn
         distances, indices = nbrs.kneighbors(query_npy, top_k)
         
-        result = ntpath.basename(query) + ","
+        result = ntpath.basename(query).split('.')[0] + ","
         # map indice back to the image name
         for indice in indices[0]:
-            result += ntpath.basename(eval_list[indice]) + ";"
+            result += ntpath.basename(eval_list[indice]).split('.')[0] + ";"
         print result
         count += 1
 
